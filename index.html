@@ -1,0 +1,640 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#081426">
+<title>BLOCK BLAST | DERiiLNAY</title>
+
+<link rel="manifest" href="./manifest.webmanifest">
+
+<meta name="theme-color" content="#081426">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<link rel="icon" type="image/png" href="./icon-192.png">
+
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+ background:radial-gradient(circle at top,#18365a,#07101f 70%);
+ color:white;font-family:Arial,sans-serif;
+ min-height:100vh;display:flex;justify-content:center;
+ padding:18px 10px;touch-action:pan-y
+}
+.game{width:100%;max-width:440px;text-align:center}
+h1{font-size:27px;letter-spacing:2px;margin:8px 0 5px}
+.sub{font-size:11px;color:#9bb8d9;letter-spacing:3px;margin-bottom:18px}
+.stats{display:flex;gap:10px;margin-bottom:18px}
+.stat{
+ flex:1;background:#132844;border:1px solid #29496c;
+ border-radius:13px;padding:12px 5px
+}
+.stat small{display:block;color:#9db9d9;font-size:11px;margin-bottom:5px}
+.stat strong{font-size:23px;color:#55e4ff}
+.board-wrap{
+ background:#10233c;padding:8px;border-radius:15px;
+ border:1px solid #315477;box-shadow:0 8px 30px #0008
+}
+#board{
+ display:grid;grid-template-columns:repeat(10,1fr);
+ gap:3px;width:100%;aspect-ratio:1
+}
+.cell{
+ background:#203b5a;border-radius:4px;
+ border:1px solid #294867;min-width:0;min-height:0
+}
+.cell.filled{
+ background:var(--color);border-color:#ffffff55;
+ box-shadow:inset 0 1px 3px #ffffff55,0 2px 5px #0005
+}
+.cell.preview{background:#63f0b4;border:1px solid white}
+.cell.invalid{background:#ff536b;border:1px solid white}
+.info{color:#a9c5e4;font-size:12px;margin:14px 0}
+.pieces{
+ display:flex;justify-content:space-around;align-items:center;
+ gap:8px;min-height:115px;margin:10px 0 15px
+}
+.piece{
+ width:31%;height:105px;background:#122943;
+ border:2px solid #294969;border-radius:13px;
+ display:flex;align-items:center;justify-content:center;
+ touch-action:none;user-select:none;position:relative
+}
+.piece.selected{border-color:#54e5ff;background:#1b3e5d}
+.piece.used{opacity:.2;pointer-events:none}
+.mini{
+ display:grid;grid-template-columns:repeat(5,17px);
+ grid-template-rows:repeat(5,17px);gap:3px;
+ pointer-events:none
+}
+.mini-cell{border-radius:4px;background:transparent}
+.mini-cell.on{background:var(--color);box-shadow:inset 0 1px 3px #ffffff66}
+.buttons{display:flex;gap:10px}
+button{
+ border:0;border-radius:11px;padding:13px 10px;
+ font-weight:bold;font-size:13px;cursor:pointer
+}
+#restart{flex:1;background:#35d6f4;color:#062033}
+#sound{background:#203c5d;color:white}
+.footer{font-size:10px;color:#7794b5;margin-top:18px;letter-spacing:2px}
+#message{
+ display:none;position:fixed;inset:0;background:#000b;
+ align-items:center;justify-content:center;padding:20px;z-index:10
+}
+.dialog{
+ background:#142b48;border:1px solid #4b779f;
+ border-radius:20px;padding:28px;width:100%;max-width:320px
+}
+.dialog h2{font-size:25px;margin-bottom:12px}
+.dialog p{color:#c4d8ee;margin-bottom:18px}
+#dragHint{font-size:11px;color:#55e4ff;min-height:17px}
+
+/* ANIMASI LEDAKAN BLOCK BLAST */
+.cell.explode{
+ animation:blockExplosion .35s ease forwards;
+ z-index:2;
+}
+
+@keyframes blockExplosion{
+ 0%{
+  transform:scale(1);
+  opacity:1;
+  filter:brightness(1);
+  box-shadow:0 0 5px white;
+ }
+ 45%{
+  transform:scale(1.25);
+  opacity:1;
+  filter:brightness(3);
+  box-shadow:0 0 18px #55eaff;
+ }
+ 100%{
+  transform:scale(.1);
+  opacity:0;
+  filter:brightness(3);
+ }
+}
+
+/* EFEK NEON GLOW PADA BALOK */
+.cell.filled{
+ border:1px solid #ffffffaa;
+ box-shadow:
+  0 0 4px var(--color),
+  0 0 9px var(--color),
+  0 0 15px var(--color),
+  inset 0 0 7px #ffffff88;
+ animation:neonPulse 2s infinite alternate;
+}
+
+.mini-cell.on{
+ box-shadow:
+  0 0 5px var(--color),
+  0 0 10px var(--color),
+  inset 0 0 5px #ffffffaa;
+}
+
+@keyframes neonPulse{
+ from{
+  filter:brightness(1);
+ }
+ to{
+  filter:brightness(1.4);
+  box-shadow:
+   0 0 7px var(--color),
+   0 0 14px var(--color),
+   0 0 22px var(--color),
+   inset 0 0 8px white;
+ }
+}
+
+/* EFEK BLINK SAAT BLOCK RUNTUH */
+.cell.explode{
+ animation: blockBlink .35s ease-in-out forwards !important;
+}
+
+@keyframes blockBlink{
+ 0%{
+  opacity:1;
+  filter:brightness(1);
+  transform:scale(1);
+  box-shadow:0 0 5px white;
+ }
+ 15%{
+  opacity:.15;
+  filter:brightness(.5);
+  transform:scale(.9);
+ }
+ 30%{
+  opacity:1;
+  filter:brightness(3);
+  transform:scale(1.2);
+  box-shadow:0 0 20px white,0 0 30px #55eaff;
+ }
+ 45%{
+  opacity:.15;
+  filter:brightness(.5);
+  transform:scale(.9);
+ }
+ 65%{
+  opacity:1;
+  filter:brightness(3);
+  transform:scale(1.2);
+  box-shadow:0 0 25px #fff,0 0 35px #55eaff;
+ }
+ 100%{
+  opacity:0;
+  filter:brightness(4);
+  transform:scale(.1);
+ }
+}
+
+/* CAHAYA LEDAKAN MENYEBAR */
+.cell.explode{
+ position:relative;
+ z-index:5;
+ animation:lightBlast .35s ease-in-out forwards !important;
+}
+
+@keyframes lightBlast{
+ 0%{
+  transform:scale(1);
+  opacity:1;
+  filter:brightness(1);
+  box-shadow:0 0 5px white;
+ }
+ 25%{
+  transform:scale(1.2);
+  opacity:1;
+  filter:brightness(3);
+  box-shadow:
+   0 0 12px white,
+   0 0 25px #35eaff,
+   0 0 40px #35eaff;
+ }
+ 50%{
+  transform:scale(.9);
+  opacity:.7;
+  filter:brightness(4);
+  box-shadow:
+   0 0 20px white,
+   0 0 35px #35eaff,
+   0 0 55px #35eaff;
+ }
+ 100%{
+  transform:scale(.1);
+  opacity:0;
+  filter:brightness(5);
+ }
+}
+
+/* EFEK PARTIKEL KRISTAL */
+
+/* ULTIMATE CRYSTAL EXPLOSION */
+.particle{
+ position:fixed;
+ width:9px;
+ height:9px;
+ border-radius:2px;
+ pointer-events:none;
+ z-index:99999;
+ box-shadow:
+  0 0 8px currentColor,
+  0 0 18px currentColor,
+  0 0 28px currentColor;
+ animation:crystalMega .9s cubic-bezier(.15,.7,.25,1) forwards;
+}
+
+@keyframes crystalMega{
+ 0%{
+  opacity:1;
+  transform:translate(0,0) scale(1.5) rotate(0deg);
+ }
+ 35%{
+  opacity:1;
+  transform:translate(
+   calc(var(--dx)*.65),
+   calc(var(--dy)*.65)
+  ) scale(1.8) rotate(180deg);
+ }
+ 100%{
+  opacity:0;
+  transform:translate(var(--dx),var(--dy))
+   scale(0) rotate(540deg);
+ }
+}
+
+
+</style>
+</head>
+
+<body>
+<div class="game">
+ <h1>🧩 BLOCK BLAST</h1>
+ <div class="sub">DERiiLNAY EDITION</div>
+
+ <div class="stats">
+  <div class="stat"><small>SKOR</small><strong id="score">0</strong></div>
+  <div class="stat"><small>REKOR</small><strong id="best">0</strong></div>
+ </div>
+
+ <div class="board-wrap">
+  <div id="board"></div>
+ </div>
+
+ <div class="info">Tarik balok ke papan atau ketuk balok lalu pilih tempatnya.</div>
+ <div id="dragHint"></div>
+ <div class="pieces" id="pieces"></div>
+
+ <div class="buttons">
+  <button id="restart" onclick="restart()">↻ MULAI ULANG</button>
+  <button id="sound" onclick="toggleSound()">♫ SUARA ON</button>
+ </div>
+ <div class="footer">DEVELOPED WITH ❤️ BY DERiiLNAY</div>
+</div>
+
+<div id="message">
+ <div class="dialog">
+  <h2>GAME OVER</h2>
+  <p id="finalScore"></p>
+  <button id="restart" onclick="restart()">MAIN LAGI</button>
+ </div>
+</div>
+
+<script>
+const SIZE=10;
+const colors=["#27c9ff","#ffb52e","#b879ff","#45e69a","#ff668c","#f3e65a"];
+
+const shapes=[
+ [[0,0]],
+ [[0,0],[0,1]],
+ [[0,0],[1,0]],
+ [[0,0],[0,1],[0,2]],
+ [[0,0],[1,0],[2,0]],
+ [[0,0],[0,1],[1,0],[1,1]],
+ [[0,0],[0,1],[0,2],[0,3]],
+ [[0,0],[1,0],[2,0],[3,0]],
+ [[0,0],[0,1],[0,2],[1,1]],
+ [[0,1],[1,0],[1,1],[1,2]],
+ [[0,0],[1,0],[1,1],[2,1]],
+ [[0,1],[1,0],[1,1],[2,0]],
+ [[0,0],[0,1],[0,2],[1,0],[1,1],[1,2]],
+ [[0,0],[1,0],[2,0],[2,1],[2,2]],
+ [[0,0],[0,1],[1,1],[1,2]]
+];
+
+let grid=[],pieces=[],score=0,best=Number(localStorage.getItem("blockBest")||0);
+let selected=-1,sound=true,drag=null,preview=null;
+
+const board=document.getElementById("board");
+const pieceBox=document.getElementById("pieces");
+
+function init(){
+ grid=Array.from({length:SIZE},()=>Array(SIZE).fill(null));
+ score=0;selected=-1;preview=null;
+ newPieces();render();updateStats();
+ document.getElementById("message").style.display="none";
+}
+
+function randomPiece(){
+ let shape=shapes[Math.floor(Math.random()*shapes.length)];
+ return {shape:shape.map(p=>[...p]),color:colors[Math.floor(Math.random()*colors.length)],used:false};
+}
+
+function newPieces(){
+ pieces=[randomPiece(),randomPiece(),randomPiece()];
+}
+
+function render(){
+ board.innerHTML="";
+ for(let r=0;r<SIZE;r++){
+  for(let c=0;c<SIZE;c++){
+   let cell=document.createElement("div");
+   cell.className="cell";
+   if(grid[r][c]){
+    cell.classList.add("filled");
+    cell.style.setProperty("--color",grid[r][c]);
+   }
+   if(preview && preview.cells.some(p=>p[0]===r&&p[1]===c)){
+    cell.classList.add(preview.valid?"preview":"invalid");
+   }
+   cell.dataset.r=r;cell.dataset.c=c;
+   board.appendChild(cell);
+  }
+ }
+ renderPieces();
+}
+
+function renderPieces(){
+ pieceBox.innerHTML="";
+ pieces.forEach((p,i)=>{
+  let el=document.createElement("div");
+  el.className="piece"+(p.used?" used":"")+(selected===i?" selected":"");
+  el.dataset.index=i;
+
+  let mini=document.createElement("div");
+  mini.className="mini";
+  let cells=Array.from({length:25},()=>false);
+  p.shape.forEach(([r,c])=>{cells[r*5+c]=true});
+  cells.forEach(on=>{
+   let d=document.createElement("div");
+   d.className="mini-cell"+(on?" on":"");
+   if(on)d.style.setProperty("--color",p.color);
+   mini.appendChild(d);
+  });
+  el.appendChild(mini);
+  el.addEventListener("pointerdown",e=>startDrag(e,i,el));
+  el.addEventListener("click",()=>{if(!p.used && !drag){selected=i;renderPieces()}});
+  pieceBox.appendChild(el);
+ });
+}
+
+function canPlace(shape,r,c){
+ return shape.every(([y,x])=>{
+  let yy=r+y,xx=c+x;
+  return yy>=0&&yy<SIZE&&xx>=0&&xx<SIZE&&grid[yy][xx]===null;
+ });
+}
+
+
+function place(i,r,c){
+ let p=pieces[i];
+
+ if(!p||p.used||!canPlace(p.shape,r,c))return false;
+
+ p.shape.forEach(([y,x])=>{
+  grid[r+y][c+x]=p.color;
+ });
+
+ p.used=true;
+ score+=p.shape.length*10;
+
+ let didClear=clearLines();
+
+ selected=-1;
+ preview=null;
+ playSound();
+
+ if(pieces.every(x=>x.used))newPieces();
+
+ updateStats();
+
+ if(didClear){
+  renderPieces();
+ }else{
+  render();
+  if(!hasMove())gameOver();
+ }
+
+ return true;
+}
+
+
+function crystalBurst(x,y,color){
+ for(let i=0;i<12;i++){
+  let particle=document.createElement("div");
+  particle.className="particle";
+  particle.style.left=x+"px";
+  particle.style.top=y+"px";
+  particle.style.background=color;
+  particle.style.color=color;
+
+  let angle=Math.random()*Math.PI*2;
+  let distance=25+Math.random()*65;
+
+  particle.style.setProperty("--dx",
+   Math.cos(angle)*distance+"px");
+  particle.style.setProperty("--dy",
+   Math.sin(angle)*distance+"px");
+
+  document.body.appendChild(particle);
+
+  setTimeout(()=>particle.remove(),700);
+ }
+}
+
+function clearLines(){
+ let rows=[],cols=[];
+
+ for(let r=0;r<SIZE;r++){
+  if(grid[r].every(x=>x!==null))rows.push(r);
+ }
+
+ for(let c=0;c<SIZE;c++){
+  if(grid.every(row=>row[c]!==null))cols.push(c);
+ }
+
+ let remove=new Set();
+
+ rows.forEach(r=>{
+  for(let c=0;c<SIZE;c++)remove.add(r+","+c);
+ });
+
+ cols.forEach(c=>{
+  for(let r=0;r<SIZE;r++)remove.add(r+","+c);
+ });
+
+ if(remove.size===0)return false;
+
+ 
+remove.forEach(key=>{
+ let [r,c]=key.split(",").map(Number);
+ let cell=board.children[r*SIZE+c];
+
+ if(cell){
+  cell.classList.add("explode");
+
+  let rect=cell.getBoundingClientRect();
+
+  crystalBurst(
+   rect.left+rect.width/2,
+   rect.top+rect.height/2,
+   grid[r][c]
+  );
+ }
+});
+
+
+ score+=remove.size*5;
+
+ setTimeout(()=>{
+  remove.forEach(key=>{
+   let [r,c]=key.split(",").map(Number);
+   grid[r][c]=null;
+  });
+
+  render();
+  updateStats();
+
+  if(!hasMove())gameOver();
+
+ },350);
+
+ return true;
+}
+
+
+function hasMove(){
+ return pieces.some(p=>{
+  if(p.used)return false;
+  for(let r=0;r<SIZE;r++)for(let c=0;c<SIZE;c++){
+   if(canPlace(p.shape,r,c))return true;
+  }
+  return false;
+ });
+}
+
+function updateStats(){
+ document.getElementById("score").textContent=score;
+ if(score>best){
+  best=score;
+  localStorage.setItem("blockBest",best);
+ }
+ document.getElementById("best").textContent=best;
+}
+
+function gameOver(){
+ document.getElementById("finalScore").textContent="Skor akhir kamu: "+score;
+ document.getElementById("message").style.display="flex";
+}
+
+function restart(){init()}
+
+function toggleSound(){
+ sound=!sound;
+ document.getElementById("sound").textContent=sound?"♫ SUARA ON":"♫ SUARA OFF";
+}
+
+function playSound(){
+ if(!sound)return;
+ try{
+  let ctx=new (window.AudioContext||window.webkitAudioContext)();
+  let osc=ctx.createOscillator(),gain=ctx.createGain();
+  osc.connect(gain);gain.connect(ctx.destination);
+  osc.frequency.value=520;gain.gain.value=.04;
+  osc.start();osc.stop(ctx.currentTime+.08);
+ }catch(e){}
+}
+
+function startDrag(e,i,el){
+ if(pieces[i].used)return;
+ e.preventDefault();
+ selected=i;
+
+ let rect=el.getBoundingClientRect();
+ let cellW=rect.width/5,cellH=rect.height/5;
+ let x=Math.floor((e.clientX-rect.left)/cellW);
+ let y=Math.floor((e.clientY-rect.top)/cellH);
+ let shape=pieces[i].shape;
+
+ // Tentukan bagian balok yang sedang disentuh
+ let nearest=shape.reduce((a,b)=>{
+  let da=(a[0]-y)**2+(a[1]-x)**2;
+  let db=(b[0]-y)**2+(b[1]-x)**2;
+  return db<da?b:a;
+ });
+ drag={index:i,offsetY:nearest[0],offsetX:nearest[1]};
+ document.getElementById("dragHint").textContent="GESER BALOK KE PAPAN";
+ renderPieces();
+}
+
+function updatePreview(e){
+ if(!drag)return;
+ let rect=board.getBoundingClientRect();
+ let cellW=rect.width/SIZE,cellH=rect.height/SIZE;
+ let c=Math.floor((e.clientX-rect.left)/cellW)-drag.offsetX;
+ let r=Math.floor((e.clientY-rect.top)/cellH)-drag.offsetY;
+ let shape=pieces[drag.index].shape;
+ let cells=shape.map(([y,x])=>[r+y,c+x]);
+ preview={cells,valid:canPlace(shape,r,c),r,c};
+ render();
+}
+
+document.addEventListener("pointermove",e=>{
+ if(drag)updatePreview(e);
+});
+
+document.addEventListener("pointerup",e=>{
+ if(!drag)return;
+ let rect=board.getBoundingClientRect();
+ let inside=e.clientX>=rect.left&&e.clientX<=rect.right&&
+            e.clientY>=rect.top&&e.clientY<=rect.bottom;
+
+ if(inside){
+  let cellW=rect.width/SIZE,cellH=rect.height/SIZE;
+  let c=Math.floor((e.clientX-rect.left)/cellW)-drag.offsetX;
+  let r=Math.floor((e.clientY-rect.top)/cellH)-drag.offsetY;
+  place(drag.index,r,c);
+ }else{
+  preview=null;render();
+ }
+ drag=null;
+ document.getElementById("dragHint").textContent="";
+ renderPieces();
+});
+
+board.addEventListener("click",e=>{
+ if(drag)return;
+ let cell=e.target.closest(".cell");
+ if(!cell)return;
+ let i=selected;
+ if(i<0||pieces[i].used)return;
+ place(i,Number(cell.dataset.r),Number(cell.dataset.c));
+});
+
+init();
+</script>
+  
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js")
+      .then(() => console.log("PWA berhasil diaktifkan"))
+      .catch(error => console.log("PWA error:", error));
+  });
+}
+</script>
+</body>
+</html>
